@@ -1,17 +1,309 @@
-## **Report 1: Croma India Product-Wise Sales Report for Fiscal Year 2021**
-### Query used
-SELECT
-	s.date, s.product_code, p.product,
-    p.variant, s.sold_quantity,
-    g.gross_price,
-    round(s.sold_quantity * g.gross_price, 2) as gross_price_total
-FROM fact_sales_monthly s
-JOIN dim_product p 
-	ON s.product_code = p.product_code
-JOIN fact_gross_price g 
-	ON p.product_code = g.product_code AND
-		g.fiscal_year = get_fiscal_year(date)
-WHERE customer_code = "90002002" AND
-	get_fiscal_year(date)  = 2021 
-ORDER BY date ASC;
--------------------------------------------------------------------------------------------------
+-- Report 1: Croma India Product-Wise Sales Report for Fiscal Year 2021**
+-- Query used :
+
+		SELECT
+		    s.date, s.product_code, p.product,
+		    p.variant, s.sold_quantity,
+		    g.gross_price,
+		    round(s.sold_quantity * g.gross_price, 2) as gross_price_total
+		FROM fact_sales_monthly s
+		JOIN dim_product p 
+			ON s.product_code = p.product_code
+		JOIN fact_gross_price g 
+			ON p.product_code = g.product_code AND
+				g.fiscal_year = get_fiscal_year(date)
+		WHERE customer_code = "90002002" AND
+			get_fiscal_year(date)  = 2021 
+		ORDER BY date ASC;
+
+-- Additional Notes:
+-- The get_fiscal_year function is used to determine the fiscal year from the sale date.
+-- This report helps in monitoring the sales performance of individual products and their variants.
+_______________________________________________________________________________________________________________
+
+-- Report 2: Gross Monthly Total Sales Report for Croma
+-- SQL Query Used:
+
+		SELECT
+			s.date,
+		    	round(sum(s.sold_quantity * g.gross_price ) , 2) as gross_price_total
+		FROM fact_sales_monthly s 
+		JOIN fact_gross_price g
+			ON g.product_code = s.product_code and
+			g.fiscal_year  = get_fiscal_year(s.date)
+		WHERE 
+			customer_code = 90002002
+		GROUP BY s.date;
+
+-- Additional Notes:
+-- The get_fiscal_year function is used to determine the fiscal year from the sale date.
+-- This report helps in understanding the monthly sales contribution.
+_______________________________________________________________________________________________________________
+
+-- Report 3: Yearly Total Gross Sales Report for Croma
+-- SQL Query Used:
+
+		SELECT
+			get_fiscal_year(s.date) as fiscal_year,
+			round(sum(s.sold_quantity * g.gross_price )/1000000 , 2) as gross_price_total_mln
+		FROM fact_sales_monthly s 
+		JOIN fact_gross_price g
+			ON g.product_code = s.product_code 	AND
+			   g.fiscal_year  = get_fiscal_year(s.date)
+		WHERE customer_code = 90002002
+		GROUP BY get_fiscal_year(s.date);
+
+-- Additional Notes:
+-- gross_price_total_mln vales are queried in Million.
+-- The get_fiscal_year function is used to determine the fiscal year from the sale date.
+-- The SUM function calculates the total gross sales for each fiscal year.
+_______________________________________________________________________________________________________________
+
+-- Report 4: Top 5 Markets, Products, and Customers by Net Sales for FY 2021
+-- Top 5 Markets by Net Sales
+-- SQL Query:
+		SELECT
+		     market,
+		     round(sum(net_sales)/1000000 ,2) as net_sales_mln
+		FROM net_sales
+		WHERE fiscal_year = 2021
+		GROUP BY market
+		ORDER BY net_sales_mln DESC
+		LIMIT 5;;
+
+-- Top 5 Products
+-- SQL Query:
+		SELECT
+		    product,
+		    round(sum(net_sales)/1000000,2) as net_sales_mln
+		FROM net_sales
+		WHERE fiscal_year = 2021
+		GROUP BY product
+		ORDER BY net_sales_mln DESC
+		LIMIT 5;
+
+-- Top 5 Customers
+-- SQL Query:
+		SELECT
+		    customer,
+		    ROUND(SUM(net_sales)/1000000 , 2 ) as net_sales_mln
+		FROM net_sales
+		WHERE fiscal_year = 2021 
+		GROUP BY customer
+		ORDER BY net_sales_mln DESC
+		LIMIT 5;
+
+-- Additional Notes:
+-- All the values are in Millions.
+-- These reports provide insights into market, product, and customer performance.
+_______________________________________________________________________________________________________________
+
+-- Report 5: Net Sales Percentage Share by Region for FY 2021
+-- SQL Query:
+		WITH cte AS (
+		    SELECT 
+		        c.customer,
+		        c.region,
+		        ROUND(SUM(net_sales) / 1000000, 2) AS net_sales_mln
+		    FROM net_sales s
+		    JOIN dim_customer c ON c.customer_code = s.customer_code
+		    WHERE s.fiscal_year = 2021
+		    GROUP BY c.customer, c.region
+		)
+		SELECT 
+		    region,
+		    customer,
+		    net_sales_mln,
+		    round((net_sales_mln * 100 / SUM(net_sales_mln) 
+			OVER (PARTITION BY region)),2) AS pct_share_region
+		FROM cte
+		ORDER BY region, net_sales_mln DESC;
+
+-- Additional Notes:
+-- net_sales_mln values are in Millions.
+-- The percentage share is calculated for each customer within their region.
+_______________________________________________________________________________________________________________
+
+-- Report 6: Net Sales Percentage Share Global for FY 2021
+-- SQL Query Used:
+		WITH cte1 as (
+			SELECT
+			    customer,
+			    ROUND(SUM(net_sales)/1000000 , 2 ) as net_sales_mln
+			FROM net_sales
+			WHERE fiscal_year = 2021
+			GROUP BY customer
+			ORDER BY net_sales_mln DESC
+		)
+		SELECT
+		    *,
+		    round(net_sales_mln*100/sum(net_sales_mln) over() , 2) as market_share
+		FROM cte1
+		ORDER BY market_share DESC;
+
+-- Additional Notes:
+-- The CTE aggregates net sales for each customer globally.
+-- The percentage share is calculated against the total global net sales.
+_______________________________________________________________________________________________________________
+
+-- Report 7: Top N Products in Each Division by Sold Quantity for FY 2021
+-- SQL Query Used:
+		WITH cte1 AS 
+		(
+			    SELECT
+			    p.division,
+			    p.product,
+			sum(sold_quantity) as sold_qty
+			FROM fact_sales_monthly s
+			JOIN dim_product p 
+				ON p.product_code = s.product_code
+			WHERE fiscal_year = 2021
+			GROUP BY p.division, p.product
+		),
+		cte2 AS 
+		(
+			SELECT
+			    *,
+			    dense_rank() over(partition by division order by sold_qty DESC) as d_rnk
+			FROM cte1
+		)
+		SELECT
+		    *
+		FROM cte2
+		WHERE d_rnk <= 3 ;
+
+-- Additional Notes:
+-- CTE1 aggregates sold quantity by division and product.
+-- CTE2 ranks products within each division based on sold quantity.
+_______________________________________________________________________________________________________________
+
+-- Report 8: Top N Markets by Region by Gross Sales for FY 2021
+-- SQL Query Used:
+		WITH cte1 AS 
+		(
+			SELECT
+			    region,
+			    market,
+			    round(sum(sold_quantity * gross_price / 1000000) , 2) as gross_sales_mln 
+			FROM fact_sales_monthly s
+			JOIN dim_customer c using (customer_code)
+			JOIN fact_gross_price g USING (fiscal_year , product_code)
+			WHERE fiscal_year = 2021
+			GROUP BY region , market
+		),
+		cte2 AS 
+		(
+			SELECT
+			    *,
+			    dense_rank() over(partition by region order by gross_sales_mln desc) as d_rnk
+			FROM cte1
+		)
+		SELECT 
+		    *
+		FROM cte2 
+		WHERE d_rnk <= 2;
+
+-- Additional Notes:
+-- CTE5 aggregates gross sales by market and region.
+-- CTE6 ranks markets within each region based on gross sales.
+_______________________________________________________________________________________________________________
+
+-- Report 9: Forecast Accuracy for All Customers for FY 2021
+-- SQL Query Used:
+		create temporary table fa_21  
+		select
+		    s.customer_code,
+		    sum(sold_quantity) as sold_quantity,
+		    round(sum(forecast_quantity-sold_quantity),2) as net_err,
+		    round(sum(forecast_quantity-sold_quantity)*100/sum(forecast_quantity),2) as net_err_pct,
+		    round(sum(abs(forecast_quantity-sold_quantity)),2) as abs_err,
+		    round(sum(abs(forecast_quantity-sold_quantity))*100 / sum(forecast_quantity),2) as abs_err_pct
+		from fact_act_est s
+		where fiscal_year = 2021
+		group by s.customer_code
+		
+		SELECT
+		    e.customer_code, customer, market,
+		    sold_quantity, net_err, net_err_pct,
+		    abs_err, abs_err_pct,
+		    if(abs_err_pct > 100 , 0 , 100 - abs_err_pct)  as forecast_accuracy
+		FROM fa_21 e 
+		JOIN dim_customer c
+		using (customer_code)
+		order by forecast_accuracy desc;
+
+-- Additional Notes:
+-- The query uses a temporary table to store intermediate results for forecast accuracy.
+-- Net error and accuracy are calculated and used to assess performance.
+_______________________________________________________________________________________________________________
+-- Report 10: Comparison of Forecast Accuracy Between FY 2020 and FY 2021 Where Forecast Accuracy drops from 
+    previous year.
+-- SQL Query Used:
+		create temporary table fa_21  
+		with abs_err as
+		(
+			select
+			    s.customer_code,
+			    sum(sold_quantity) as sold_quantity,
+			    round(sum(forecast_quantity-sold_quantity),2) as net_err,
+			    round(sum(forecast_quantity-sold_quantity)*100/sum(forecast_quantity),2) as net_err_pct,
+			    round(sum(abs(forecast_quantity-sold_quantity)),2) as abs_err,
+			    round(sum(abs(forecast_quantity-sold_quantity))*100 / sum(forecast_quantity),2) as abs_err_pct
+			from fact_act_est s
+			where fiscal_year = 2021
+			group by s.customer_code
+		)
+		SELECT
+		    e.customer_code, customer, market, sold_quantity,
+		    net_err, net_err_pct, abs_err, abs_err_pct,
+		    if(abs_err_pct > 100 , 0 , 100 - abs_err_pct)  as forecast_accuracy
+		FROM abs_err e 
+		JOIN dim_customer c
+		using (customer_code)
+		order by forecast_accuracy desc;
+		
+		create temporary table fa_20  
+		with abs_err as
+		(
+			select
+			    s.customer_code,
+			    sum(sold_quantity) as sold_quantity,
+			    round(sum(forecast_quantity-sold_quantity),2) as net_err,
+			    round(sum(forecast_quantity-sold_quantity)*100/sum(forecast_quantity),2) as net_err_pct,
+			    round(sum(abs(forecast_quantity-sold_quantity)),2) as abs_err,
+			    round(sum(abs(forecast_quantity-sold_quantity))*100 / sum(forecast_quantity),2) as abs_err_pct
+			from fact_act_est s
+			where fiscal_year = 2020
+			group by s.customer_code
+		)
+		SELECT
+		    e.customer_code,customer,market,sold_quantity,
+		    net_err,net_err_pct,abs_err,abs_err_pct,
+		    if(abs_err_pct > 100 , 0 , 100 - abs_err_pct)  as forecast_accuracy
+		FROM abs_err e 
+		JOIN dim_customer c
+		using (customer_code)
+		order by forecast_accuracy desc;
+
+		with cte1 as 
+		(
+		select
+		    t2.customer_code, t2.customer,t2.market,
+		    t2.forecast_accuracy as forecast_accuracy_21,
+		    t1.forecast_accuracy as forecast_accuracy_20,
+		    t2.forecast_accuracy - t1.forecast_accuracy as diff
+		from fa_21 t2
+		join fa_20 t1
+		on t2.customer_code = t1.customer_code
+		)
+
+		select
+		    *
+		from cte1
+		where diff < 0
+		order by diff;
+
+-- Additional Notes:
+-- The query compares forecast accuracy between two fiscal years.
+-- Differences in net error and absolute error percentages are calculated to assess changes in accuracy.
+_______________________________________________________________________________________________________________
