@@ -1,0 +1,19 @@
+SQL Queries :
+
+-- Report 1:Croma India Product-Wise Sales Report for Fiscal Year 2021
+-- SQL Query Used:
+SELECT
+	s.date, s.product_code, p.product,
+    p.variant, s.sold_quantity,
+    g.gross_price,
+    round(s.sold_quantity * g.gross_price, 2) as gross_price_total
+FROM fact_sales_monthly s
+JOIN dim_product p 
+	ON s.product_code = p.product_code
+JOIN fact_gross_price g 
+	ON p.product_code = g.product_code AND
+		g.fiscal_year = get_fiscal_year(date)
+WHERE customer_code = "90002002" AND
+	get_fiscal_year(date)  = 2021 
+ORDER BY date ASC;
+-------------------------------------------------------------------------------------------------
