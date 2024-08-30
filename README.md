@@ -4,7 +4,7 @@
 AtliQ Hardware is a leading global manufacturing company specializing in electronic peripherals such as mouse, keyboards, and other devices. The company operates through three primary distribution channels: retail partnerships, direct channels (AtliQ Exclusive stores and e-stores), and distributors in regulated regions like China and South Korea. This strategy allows AtliQ to maintain a robust global presence across both traditional and digital platforms.
 
 ## **Table of Contents** 
-- [Problem Statement](#problem-statement)
+- [Problem Statement](#Problem-Statement)
 - [Project Overview](#project-overview)
 - [Key Areas of Focus](#key-areas-of-focus)
 - [Data Sources](#data-sources)
