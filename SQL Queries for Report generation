@@ -1,7 +1,5 @@
-SQL Queries :
-
--- Report 1:Croma India Product-Wise Sales Report for Fiscal Year 2021
--- SQL Query Used:
+## **Report 1: Croma India Product-Wise Sales Report for Fiscal Year 2021**
+### Query used
 SELECT
 	s.date, s.product_code, p.product,
     p.variant, s.sold_quantity,
